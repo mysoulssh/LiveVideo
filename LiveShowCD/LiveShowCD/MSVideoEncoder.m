@@ -11,6 +11,7 @@
 @property(nonatomic, assign)VTCompressionSessionRef compressSession;
 @property(nonatomic, copy)VideoEncodeDataBlock outputBlock;
 @property(nonatomic, assign)int64_t frameID;
+@property (nonatomic) CFStringRef encodeLevel;
 @end
 
 @implementation MSVideoEncoder
@@ -19,12 +20,47 @@
 {
     self = [super init];
     if (self) {
+        self.videoQuality = EncodeVideoQualityHD;
         self.fps = 30;
-        self.bitRate = 0;
+        self.bitRate = 1628*1024;
         self.keyFrameInterval = 60;
-        self.limit = @[];
+        self.limit = @[@(self.bitRate*1.5/8), @(1)];
+        self.encodeLevel = kVTProfileLevel_H264_Baseline_4_1;
     }
     return self;
+}
+
+- (void)setEncodeVideoQuality:(EncodeVideoQuality)quality {
+    if (self.videoQuality == quality) {
+        return;
+    }
+    switch (quality) {
+        case EncodeVideoQualityBluRay:
+            self.bitRate = 3192*1024;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_4_2;
+            break;
+        case EncodeVideoQualityHD:
+            self.bitRate = 1628*1024;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_4_1;
+            break;
+        case EncodeVideoQualitySD:
+            self.bitRate = 564*1024;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_3_1;
+            break;
+        case EncodeVideoQualityPC_360:
+            self.bitRate = 332*1024;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_3_0;
+            break;
+            
+        default:
+            break;
+    }
+    
+    self.limit = @[@(self.bitRate*1.5/8), @(1)];
+    
+    VTCompressionSessionCompleteFrames(self.compressSession, kCMTimeInvalid);
+    VTCompressionSessionInvalidate(self.compressSession);
+    self.compressSession = NULL;
 }
 
 #pragma mark - 解码器相关
@@ -202,12 +238,17 @@ void videoCompressDataCallback(void *outputCallbackRefCon, void *sourceFrameRefC
     
     // 设置实时编码输出（直播必然是实时输出,否则会有延迟）
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Baseline_AutoLevel);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ProfileLevel, self.encodeLevel);
     
     // 设置关键帧（GOPsize)间隔
-    int frameInterval = self.keyFrameInterval;
+    int frameInterval = self.keyFrameInterval*self.fps;
     CFNumberRef frameIntervalRef = CFNumberCreate(NULL, kCFNumberIntType, &frameInterval);
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, frameIntervalRef);
+    
+    // 设置关键帧时间间隔
+    int frameIntervalDuration = self.keyFrameInterval;
+    CFNumberRef frameIntervalDurationRef = CFNumberCreate(NULL, kCFNumberSInt32Type, &frameIntervalDuration);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, frameIntervalDurationRef);
     
     // 设置期望帧率(每秒多少帧,如果帧率过低,会造成画面卡顿)
     int fps = self.fps;
@@ -215,9 +256,12 @@ void videoCompressDataCallback(void *outputCallbackRefCon, void *sourceFrameRefC
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
     
     // 设置码率(码率: 编码效率, 码率越高,则画面越清晰, 如果码率较低会引起马赛克 --> 码率高有利于还原原始画面,但是也不利于传输)
-    int32_t bitRate = self.bitRate?:(int32_t)(width * height * 3 * 4 * 8);
+    int32_t bitRate = self.bitRate?:1628*1024;
     CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
+    
+    // 不产生B帧
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
     
     // 设置码率，均值，单位是byte 这是一个算法
     NSArray *limit = self.limit.count?self.limit:@[@(bitRate * 1.5/8), @(1)];
