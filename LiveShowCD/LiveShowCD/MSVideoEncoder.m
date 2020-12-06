@@ -25,7 +25,7 @@
         self.bitRate = 1628*1024;
         self.keyFrameInterval = 60;
         self.limit = @[@(self.bitRate*1.5/8), @(1)];
-        self.encodeLevel = kVTProfileLevel_H264_Baseline_4_1;
+        self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
     }
     return self;
 }
@@ -41,7 +41,7 @@
             break;
         case EncodeVideoQualityHD:
             self.bitRate = 1628*1024;
-            self.encodeLevel = kVTProfileLevel_H264_Baseline_4_1;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
             break;
         case EncodeVideoQualitySD:
             self.bitRate = 564*1024;
@@ -49,7 +49,7 @@
             break;
         case EncodeVideoQualityPC_360:
             self.bitRate = 332*1024;
-            self.encodeLevel = kVTProfileLevel_H264_Baseline_3_0;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_1_3;
             break;
             
         default:
