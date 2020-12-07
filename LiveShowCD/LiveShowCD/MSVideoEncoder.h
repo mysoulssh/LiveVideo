@@ -6,18 +6,9 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <VideoToolbox/VideoToolbox.h>
+#import "MSDefineHeader.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
-typedef NS_ENUM(NSUInteger, EncodeVideoQuality) {
-    EncodeVideoQualityBluRay,   // 1920 x 1080
-    EncodeVideoQualityHD,       // 1280 x 720
-    EncodeVideoQualitySD,       // 640 x 480
-    EncodeVideoQualityPC_360    // 480 x 360
-};
-
-typedef void(^VideoEncodeDataBlock)(NSData * data);
 
 @interface MSVideoEncoder : NSObject
 

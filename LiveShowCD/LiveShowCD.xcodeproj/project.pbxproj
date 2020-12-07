@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		176911642554FD75004B130D /* MSCamPreviewView.m in Sources */ = {isa = PBXBuildFile; fileRef = 176911632554FD75004B130D /* MSCamPreviewView.m */; };
+		176C40D5257DBADF009EF7AA /* MSVideoDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 176C40D4257DBADF009EF7AA /* MSVideoDecoder.m */; };
 		177471F12578D2DF000F612B /* MSVideoEncoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 177471F02578D2DF000F612B /* MSVideoEncoder.m */; };
 		17C0F5052552B1B40057976A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F5042552B1B40057976A /* AppDelegate.m */; };
 		17C0F5082552B1B40057976A /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F5072552B1B40057976A /* SceneDelegate.m */; };
@@ -46,6 +47,9 @@
 /* Begin PBXFileReference section */
 		176911622554FD75004B130D /* MSCamPreviewView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSCamPreviewView.h; sourceTree = "<group>"; };
 		176911632554FD75004B130D /* MSCamPreviewView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSCamPreviewView.m; sourceTree = "<group>"; };
+		176C40D3257DBADF009EF7AA /* MSVideoDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSVideoDecoder.h; sourceTree = "<group>"; };
+		176C40D4257DBADF009EF7AA /* MSVideoDecoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSVideoDecoder.m; sourceTree = "<group>"; };
+		176C40D9257DBB90009EF7AA /* MSDefineHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSDefineHeader.h; sourceTree = "<group>"; };
 		177471EF2578D2DF000F612B /* MSVideoEncoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSVideoEncoder.h; sourceTree = "<group>"; };
 		177471F02578D2DF000F612B /* MSVideoEncoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSVideoEncoder.m; sourceTree = "<group>"; };
 		17C0F5002552B1B40057976A /* LiveShowCD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveShowCD.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -148,6 +152,9 @@
 				176911632554FD75004B130D /* MSCamPreviewView.m */,
 				177471EF2578D2DF000F612B /* MSVideoEncoder.h */,
 				177471F02578D2DF000F612B /* MSVideoEncoder.m */,
+				176C40D3257DBADF009EF7AA /* MSVideoDecoder.h */,
+				176C40D4257DBADF009EF7AA /* MSVideoDecoder.m */,
+				176C40D9257DBB90009EF7AA /* MSDefineHeader.h */,
 				17C0F50C2552B1B40057976A /* Main.storyboard */,
 				17C0F50F2552B1B70057976A /* Assets.xcassets */,
 				17C0F5112552B1B70057976A /* LaunchScreen.storyboard */,
@@ -406,6 +413,7 @@
 			files = (
 				17C0F50B2552B1B40057976A /* ViewController.m in Sources */,
 				17C0F5052552B1B40057976A /* AppDelegate.m in Sources */,
+				176C40D5257DBADF009EF7AA /* MSVideoDecoder.m in Sources */,
 				177471F12578D2DF000F612B /* MSVideoEncoder.m in Sources */,
 				17C0F5162552B1B70057976A /* main.m in Sources */,
 				17C0F5082552B1B40057976A /* SceneDelegate.m in Sources */,

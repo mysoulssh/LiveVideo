@@ -58,13 +58,123 @@
     
     self.limit = @[@(self.bitRate*1.5/8), @(1)];
     
-    VTCompressionSessionCompleteFrames(self.compressSession, kCMTimeInvalid);
-    VTCompressionSessionInvalidate(self.compressSession);
-    self.compressSession = NULL;
+    if (self.compressSession) {
+        VTCompressionSessionCompleteFrames(self.compressSession, kCMTimeInvalid);
+        VTCompressionSessionInvalidate(self.compressSession);
+        self.compressSession = NULL;
+    }
 }
 
-#pragma mark - 解码器相关
-void videoCompressDataCallback(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer) {
+#pragma mark - 编码器相关
+// 将 sampleBuffer(摄像头捕捉数据,原始帧数据) 编码为H.264
+- (void)encodeSampleBuffer:(CMSampleBufferRef)sampleBuffer outputData:(VideoEncodeDataBlock)block {
+    if (![self initVideoEncoderWithSampleBuffer:sampleBuffer]) {
+        return;
+    }
+    //  1.保存 block 块
+    self.outputBlock = block;
+    
+    //  2.将sampleBuffer转成imageBuffer
+    CVImageBufferRef imageBuffer = (CVImageBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
+    
+    //  3.根据当前的帧数,创建CMTime的时间
+//    CMTime presentationTimeStamp = CMTimeMake(self.frameID++, 1000);
+    VTEncodeInfoFlags flags;
+    
+    //  4.开始编码该帧数据
+    OSStatus statusCode = VTCompressionSessionEncodeFrame(
+                                                          self.compressSession,
+                                                          imageBuffer,
+                                                          kCMTimeInvalid,
+//                                                          presentationTimeStamp,
+                                                          kCMTimeInvalid,
+                                                          NULL,
+                                                          (__bridge void * _Nullable)(self),
+                                                          &flags
+                                                          );
+    
+    if (statusCode != noErr) {
+        NSString * err = [NSString stringWithFormat:@"H264: VTCompressionSessionEncodeFrame failed with %d", (int)statusCode];
+        NSLog(@"%@", err);
+        VTCompressionSessionInvalidate(self.compressSession);
+        CFRelease(self.compressSession);
+        self.compressSession = NULL;
+        if (self.ErrorBlock) {
+            self.ErrorBlock(err);
+        }
+        return;
+    }
+}
+
+- (VTCompressionSessionRef)initVideoEncoderWithSampleBuffer:(CMSampleBufferRef)sampleBuffer {
+    if (self.compressSession) {
+        return self.compressSession;
+    }
+    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    
+    size_t width = CVPixelBufferGetWidth(pixelBuffer);
+    size_t height = CVPixelBufferGetHeight(pixelBuffer);
+    VTCompressionSessionRef compressSession;
+    
+    OSStatus status = VTCompressionSessionCreate(NULL,
+                                                 (int32_t)width,
+                                                 (int32_t)height,
+                                                 kCMVideoCodecType_H264,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,
+                                                 videoCompressDataCallback,
+                                                 (__bridge void * _Nullable)(self),
+                                                 &compressSession);
+    if (status != noErr) {
+        NSLog(@"创建编码器失败!!! %d", (int)status);
+        return nil;
+    }
+    
+    // 设置实时编码输出（直播必然是实时输出,否则会有延迟）
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ProfileLevel, self.encodeLevel);
+    
+    // 设置关键帧（GOPsize)间隔
+    int frameInterval = self.keyFrameInterval*self.fps;
+    CFNumberRef frameIntervalRef = CFNumberCreate(NULL, kCFNumberIntType, &frameInterval);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, frameIntervalRef);
+    
+    // 设置关键帧时间间隔
+    int frameIntervalDuration = self.keyFrameInterval;
+    CFNumberRef frameIntervalDurationRef = CFNumberCreate(NULL, kCFNumberSInt32Type, &frameIntervalDuration);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, frameIntervalDurationRef);
+    
+    // 设置期望帧率(每秒多少帧,如果帧率过低,会造成画面卡顿)
+    int fps = self.fps;
+    CFNumberRef fpsRef = CFNumberCreate(NULL, kCFNumberIntType, &fps);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
+    
+    // 设置码率(码率: 编码效率, 码率越高,则画面越清晰, 如果码率较低会引起马赛克 --> 码率高有利于还原原始画面,但是也不利于传输)
+    int32_t bitRate = self.bitRate?:1628*1024;
+    CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
+    
+    // 不产生B帧
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
+    
+    // 设置码率，均值，单位是byte 这是一个算法
+    NSArray *limit = self.limit.count?self.limit:@[@(bitRate * 1.5/8), @(1)];
+    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_DataRateLimits, (__bridge CFArrayRef)limit);
+    
+    // 基本设置结束, 准备进行编码
+    VTCompressionSessionPrepareToEncodeFrames(compressSession);
+    
+    self.compressSession = compressSession;
+    return self.compressSession;
+}
+
+#pragma mark - Encode video data output
+void videoCompressDataCallback(void *outputCallbackRefCon,
+                               void *sourceFrameRefCon,
+                               OSStatus status,
+                               VTEncodeInfoFlags infoFlags,
+                               CMSampleBufferRef sampleBuffer) {
     // 1.判断状态是否等于没有错误
     if (status != noErr) {
         return;
@@ -171,109 +281,7 @@ void videoCompressDataCallback(void *outputCallbackRefCon, void *sourceFrameRefC
     }
 }
 
-// 将 sampleBuffer(摄像头捕捉数据,原始帧数据) 编码为H.264
-- (void)encodeSampleBuffer:(CMSampleBufferRef)sampleBuffer outputData:(VideoEncodeDataBlock)block {
-    if (![self initVideoEncoderWithSampleBuffer:sampleBuffer]) {
-        return;
-    }
-    //  1.保存 block 块
-    self.outputBlock = block;
-    
-    //  2.将sampleBuffer转成imageBuffer
-    CVImageBufferRef imageBuffer = (CVImageBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
-    
-    //  3.根据当前的帧数,创建CMTime的时间
-//    CMTime presentationTimeStamp = CMTimeMake(self.frameID++, 1000);
-    VTEncodeInfoFlags flags;
-    
-    //  4.开始编码该帧数据
-    OSStatus statusCode = VTCompressionSessionEncodeFrame(
-                                                          self.compressSession,
-                                                          imageBuffer,
-                                                          kCMTimeInvalid,
-//                                                          presentationTimeStamp,
-                                                          kCMTimeInvalid,
-                                                          NULL,
-                                                          (__bridge void * _Nullable)(self),
-                                                          &flags
-                                                          );
-    
-    if (statusCode != noErr) {
-        NSString * err = [NSString stringWithFormat:@"H264: VTCompressionSessionEncodeFrame failed with %d", (int)statusCode];
-        NSLog(@"%@", err);
-        VTCompressionSessionInvalidate(self.compressSession);
-        CFRelease(self.compressSession);
-        self.compressSession = NULL;
-        if (self.ErrorBlock) {
-            self.ErrorBlock(err);
-        }
-        return;
-    }
-}
-
-- (VTCompressionSessionRef)initVideoEncoderWithSampleBuffer:(CMSampleBufferRef)sampleBuffer {
-    if (self.compressSession) {
-        return self.compressSession;
-    }
-    CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    
-    size_t width = CVPixelBufferGetWidth(pixelBuffer);
-    size_t height = CVPixelBufferGetHeight(pixelBuffer);
-    VTCompressionSessionRef compressSession;
-    
-    OSStatus status = VTCompressionSessionCreate(NULL,
-                                                 (int32_t)width,
-                                                 (int32_t)height,
-                                                 kCMVideoCodecType_H264,
-                                                 NULL,
-                                                 NULL,
-                                                 NULL,
-                                                 videoCompressDataCallback,
-                                                 (__bridge void * _Nullable)(self),
-                                                 &compressSession);
-    if (status != noErr) {
-        NSLog(@"创建编码器失败!!! %d", (int)status);
-        return nil;
-    }
-    
-    // 设置实时编码输出（直播必然是实时输出,否则会有延迟）
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_RealTime, kCFBooleanTrue);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ProfileLevel, self.encodeLevel);
-    
-    // 设置关键帧（GOPsize)间隔
-    int frameInterval = self.keyFrameInterval*self.fps;
-    CFNumberRef frameIntervalRef = CFNumberCreate(NULL, kCFNumberIntType, &frameInterval);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, frameIntervalRef);
-    
-    // 设置关键帧时间间隔
-    int frameIntervalDuration = self.keyFrameInterval;
-    CFNumberRef frameIntervalDurationRef = CFNumberCreate(NULL, kCFNumberSInt32Type, &frameIntervalDuration);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, frameIntervalDurationRef);
-    
-    // 设置期望帧率(每秒多少帧,如果帧率过低,会造成画面卡顿)
-    int fps = self.fps;
-    CFNumberRef fpsRef = CFNumberCreate(NULL, kCFNumberIntType, &fps);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
-    
-    // 设置码率(码率: 编码效率, 码率越高,则画面越清晰, 如果码率较低会引起马赛克 --> 码率高有利于还原原始画面,但是也不利于传输)
-    int32_t bitRate = self.bitRate?:1628*1024;
-    CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
-    
-    // 不产生B帧
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
-    
-    // 设置码率，均值，单位是byte 这是一个算法
-    NSArray *limit = self.limit.count?self.limit:@[@(bitRate * 1.5/8), @(1)];
-    VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_DataRateLimits, (__bridge CFArrayRef)limit);
-    
-    // 基本设置结束, 准备进行编码
-    VTCompressionSessionPrepareToEncodeFrames(compressSession);
-    
-    self.compressSession = compressSession;
-    return self.compressSession;
-}
-
+#pragma mark - Dealloc video encoder
 - (void)releaseCompressionSession {
     if (self.compressSession) {
         VTCompressionSessionInvalidate(self.compressSession);
