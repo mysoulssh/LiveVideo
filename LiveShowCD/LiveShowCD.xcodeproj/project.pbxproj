@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1766E1B5257F8A1900EEC9DA /* AAPLEAGLLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = 1766E1B4257F8A1900EEC9DA /* AAPLEAGLLayer.m */; };
 		176911642554FD75004B130D /* MSCamPreviewView.m in Sources */ = {isa = PBXBuildFile; fileRef = 176911632554FD75004B130D /* MSCamPreviewView.m */; };
 		176C40D5257DBADF009EF7AA /* MSVideoDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 176C40D4257DBADF009EF7AA /* MSVideoDecoder.m */; };
 		177471F12578D2DF000F612B /* MSVideoEncoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 177471F02578D2DF000F612B /* MSVideoEncoder.m */; };
@@ -45,6 +46,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1766E1B3257F8A1900EEC9DA /* AAPLEAGLLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AAPLEAGLLayer.h; sourceTree = "<group>"; };
+		1766E1B4257F8A1900EEC9DA /* AAPLEAGLLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AAPLEAGLLayer.m; sourceTree = "<group>"; };
 		176911622554FD75004B130D /* MSCamPreviewView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSCamPreviewView.h; sourceTree = "<group>"; };
 		176911632554FD75004B130D /* MSCamPreviewView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSCamPreviewView.m; sourceTree = "<group>"; };
 		176C40D3257DBADF009EF7AA /* MSVideoDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSVideoDecoder.h; sourceTree = "<group>"; };
@@ -142,6 +145,8 @@
 		17C0F5022552B1B40057976A /* LiveShowCD */ = {
 			isa = PBXGroup;
 			children = (
+				1766E1B3257F8A1900EEC9DA /* AAPLEAGLLayer.h */,
+				1766E1B4257F8A1900EEC9DA /* AAPLEAGLLayer.m */,
 				17C0F5032552B1B40057976A /* AppDelegate.h */,
 				17C0F5042552B1B40057976A /* AppDelegate.m */,
 				17C0F5062552B1B40057976A /* SceneDelegate.h */,
@@ -417,6 +422,7 @@
 				177471F12578D2DF000F612B /* MSVideoEncoder.m in Sources */,
 				17C0F5162552B1B70057976A /* main.m in Sources */,
 				17C0F5082552B1B40057976A /* SceneDelegate.m in Sources */,
+				1766E1B5257F8A1900EEC9DA /* AAPLEAGLLayer.m in Sources */,
 				176911642554FD75004B130D /* MSCamPreviewView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

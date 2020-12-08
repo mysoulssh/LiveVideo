@@ -8,6 +8,8 @@
 #import "ViewController.h"
 #import "MSCamPreviewView.h"
 #import "MSVideoEncoder.h"
+#import "MSVideoDecoder.h"
+#import "AAPLEAGLLayer.h"
 
 typedef NS_ENUM(NSUInteger, CameraSetupResult) {
     CameraSetupResultSuccess,
@@ -35,15 +37,17 @@ typedef NS_ENUM(NSUInteger, CameraSetupResult) {
 
 @property(nonatomic, strong)MSCamPreviewView * previewView;
 @property(nonatomic, strong)MSVideoEncoder * videoEncoder;
+@property(nonatomic, strong)MSVideoDecoder * videoDecoder;
 
 @property(nonatomic, strong)NSFileHandle * fileHandle;
-
+@property(nonatomic, strong)AAPLEAGLLayer * playLayer;
 @end
 
 @implementation ViewController
 - (IBAction)cameraControl:(UIButton *)sender {
     sender.selected = !sender.isSelected;
     if (sender.isSelected) {
+        [self.videoEncoder releaseCompressionSession];
         [self.captureSession stopRunning];
     } else {
         [self.captureSession startRunning];
@@ -129,6 +133,17 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
     return _videoEncoder;
 }
 
+- (MSVideoDecoder *)videoDecoder {
+    if (!_videoDecoder) {
+        __weak ViewController * selfWeak = self;
+        _videoDecoder = [[MSVideoDecoder alloc] init];
+        _videoDecoder.outputDataBlock = ^(CVPixelBufferRef pixelBuffer) {
+            selfWeak.playLayer.pixelBuffer = pixelBuffer;
+        };
+    }
+    return _videoDecoder;
+}
+
 - (NSFileHandle *)fileHandle{
     if (!_fileHandle) {
         NSString * filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"test.h264"];
@@ -151,6 +166,10 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
     self.previewView.videoPreviewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     [self.view addSubview:self.previewView];
     [self.previewView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(focusPointTap:)]];
+    
+    self.playLayer = [[AAPLEAGLLayer alloc] initWithFrame:CGRectMake(100, 100, SCREENWIDTH-100, (SCREENWIDTH-100)*667/375.0)];
+    self.playLayer.backgroundColor = [UIColor blackColor].CGColor;
+    [self.view.layer addSublayer:self.playLayer];
     
     // Create the capture session.
     AVCaptureSession * captureSession = [[AVCaptureSession alloc] init];
@@ -274,13 +293,16 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
     }
     self.videoDataOutput = videoOutput;
     
+    AVCaptureConnection * connection = [videoOutput connectionWithMediaType:AVMediaTypeVideo];
+    [connection setVideoOrientation:AVCaptureVideoOrientationPortrait];
+    
     // 创建音频输出设备
-    AVCaptureAudioDataOutput * audioOutput = [[AVCaptureAudioDataOutput alloc] init];
+//    AVCaptureAudioDataOutput * audioOutput = [[AVCaptureAudioDataOutput alloc] init];
 //    [audioOutput setSampleBufferDelegate:self queue:self.outputQueue];
-    if ([self.captureSession canAddOutput:audioOutput]) {
-        [self.captureSession addOutput:audioOutput];
-    }
-    self.audioDataOutput = audioOutput;
+//    if ([self.captureSession canAddOutput:audioOutput]) {
+//        [self.captureSession addOutput:audioOutput];
+//    }
+//    self.audioDataOutput = audioOutput;
     
     [self.captureSession commitConfiguration];
     
@@ -290,10 +312,12 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     if ([output isKindOfClass:NSClassFromString(@"AVCaptureVideoDataOutput")]) {
-        __weak ViewController * selfWeak = self;
-        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
-            [selfWeak.fileHandle writeData:data];
-        }];
+        NSLog(@"%@", [NSThread currentThread]);
+//        __weak ViewController * selfWeak = self;
+//        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
+////            [selfWeak.fileHandle writeData:data];
+//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+//        }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");
     }

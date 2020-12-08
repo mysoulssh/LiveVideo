@@ -12,6 +12,8 @@
 @property(nonatomic, copy)VideoEncodeDataBlock outputBlock;
 @property(nonatomic, assign)int64_t frameID;
 @property (nonatomic) CFStringRef encodeLevel;
+
+@property (nonatomic) dispatch_queue_t encodeQueue;
 @end
 
 @implementation MSVideoEncoder
@@ -20,12 +22,13 @@
 {
     self = [super init];
     if (self) {
-        self.videoQuality = EncodeVideoQualityHD;
         self.fps = 30;
         self.bitRate = 1628*1024;
         self.keyFrameInterval = 60;
         self.limit = @[@(self.bitRate*1.5/8), @(1)];
+        self.videoQuality = EncodeVideoQualityHD;
         self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
+        self.encodeQueue = dispatch_queue_create("encodeQueue", DISPATCH_QUEUE_SERIAL);
     }
     return self;
 }
@@ -78,15 +81,14 @@
     CVImageBufferRef imageBuffer = (CVImageBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
     
     //  3.根据当前的帧数,创建CMTime的时间
-//    CMTime presentationTimeStamp = CMTimeMake(self.frameID++, 1000);
+    CMTime presentationTimeStamp = CMTimeMake(self.frameID++, 1000);
     VTEncodeInfoFlags flags;
     
     //  4.开始编码该帧数据
     OSStatus statusCode = VTCompressionSessionEncodeFrame(
                                                           self.compressSession,
                                                           imageBuffer,
-                                                          kCMTimeInvalid,
-//                                                          presentationTimeStamp,
+                                                          presentationTimeStamp,
                                                           kCMTimeInvalid,
                                                           NULL,
                                                           (__bridge void * _Nullable)(self),

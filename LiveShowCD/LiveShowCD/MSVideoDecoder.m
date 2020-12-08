@@ -37,16 +37,31 @@
 
 #pragma mark - 解码器相关
 - (void)decodeFrame:(void *)frame frameSize:(int32_t)frameSize{
+    if (!self.decompressSession) {
+        return;
+    }
     CMBlockBufferRef blockBuffer = NULL;
     // 创建 CMBlockBufferRef
-    OSStatus status  = CMBlockBufferCreateWithMemoryBlock(NULL, (void *)frame, frameSize, kCFAllocatorNull, NULL, 0, frameSize, FALSE, &blockBuffer);
+    OSStatus status  = CMBlockBufferCreateWithMemoryBlock(NULL,
+                                                          (void *)frame,
+                                                          frameSize,
+                                                          kCFAllocatorNull,
+                                                          NULL,
+                                                          0,
+                                                          frameSize,
+                                                          FALSE,
+                                                          &blockBuffer);
     if(status != kCMBlockBufferNoErr) {
         return;
     }
     CMSampleBufferRef sampleBuffer = NULL;
     const size_t sampleSizeArray[] = {frameSize};
     // 创建 CMSampleBufferRef
-    status = CMSampleBufferCreateReady(kCFAllocatorDefault, blockBuffer, _videoFormatDescription , 1, 0, NULL, 1, sampleSizeArray, &sampleBuffer);
+    status = CMSampleBufferCreateReady(kCFAllocatorDefault,
+                                       blockBuffer,
+                                       _videoFormatDescription,
+                                       1, 0, NULL, 1, sampleSizeArray,
+                                       &sampleBuffer);
     if (status != kCMBlockBufferNoErr || sampleBuffer == NULL) {
         return;
     }
@@ -54,7 +69,12 @@
     VTDecodeFrameFlags flags = 0;
     VTDecodeInfoFlags flagOut = 0;
     // 解码 这里第四个参数会传到解码的callback里的sourceFrameRefCon，可为空
-    OSStatus decodeStatus = VTDecompressionSessionDecodeFrame(self.decompressSession, sampleBuffer, flags, (__bridge void*)self, &flagOut);
+    CVPixelBufferRef outputPixelBuffer = NULL;
+    OSStatus decodeStatus = VTDecompressionSessionDecodeFrame(self.decompressSession,
+                                                              sampleBuffer,
+                                                              flags,
+                                                              &outputPixelBuffer,
+                                                              &flagOut);
     if (decodeStatus != noErr) {
         NSLog(@"decode frame error: %d", (int)decodeStatus);
     }
@@ -100,10 +120,7 @@
             break;
         default: // B帧或P帧
             NSLog(@"NALU type is B/P frame");
-            if([self initVideoDecoder])
-            {
-                [self decodeFrame:frame frameSize:frameSize];
-            }
+            [self decodeFrame:frame frameSize:frameSize];
             break;
     }
 }
@@ -135,7 +152,7 @@
     // kCVPixelBufferWidthKey、kCVPixelBufferHeightKey 解码图像的宽高
     // kCVPixelBufferOpenGLCompatibilityKey制定支持OpenGL渲染，经测试有没有这个参数好像没什么差别
     NSDictionary* destinationPixelBufferAttributes = @{
-        (id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange),
+        (id)kCVPixelBufferPixelFormatTypeKey : @(kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange),
         (id)kCVPixelBufferWidthKey : @(self.width),
         (id)kCVPixelBufferHeightKey : @(self.height),
         (id)kCVPixelBufferOpenGLCompatibilityKey : @(YES)
@@ -146,12 +163,16 @@
     callback.decompressionOutputRefCon = (__bridge void*)self;
     
     VTDecompressionSessionRef decompressSessionRef;
-    VTDecompressionSessionCreate(NULL,
-                                 videoFormatDesRef,
-                                 NULL,
-                                 (__bridge CFDictionaryRef _Nullable)(destinationPixelBufferAttributes),
-                                 &callback,
-                                 &decompressSessionRef);
+    status = VTDecompressionSessionCreate(kCFAllocatorDefault,
+                                          videoFormatDesRef,
+                                          NULL,
+                                          (__bridge CFDictionaryRef _Nullable)(destinationPixelBufferAttributes),
+                                          &callback,
+                                          &decompressSessionRef);
+    if (status != noErr) {
+        NSLog(@"decoder create error: %d", (int)status);
+        return nil;
+    }
     
     // 实时解码
     VTSessionSetProperty(decompressSessionRef, kVTDecompressionPropertyKey_RealTime, kCFBooleanTrue);
@@ -169,10 +190,25 @@ void videoDecompressDataCallback(void * CM_NULLABLE decompressionOutputRefCon,
                                  CM_NULLABLE CVImageBufferRef imageBuffer,
                                  CMTime presentationTimeStamp,
                                  CMTime presentationDuration ){
-    MSVideoDecoder * decoder = (__bridge MSVideoDecoder*)sourceFrameRefCon;
+    if (status != noErr) {
+        NSLog(@"decode error: %d", (int)status);
+        return;
+    }
+    CVPixelBufferRef *outputPixelBuffer = (CVPixelBufferRef *)sourceFrameRefCon;
+    *outputPixelBuffer = CVPixelBufferRetain(imageBuffer);
+    
+    MSVideoDecoder * decoder = (__bridge MSVideoDecoder*)decompressionOutputRefCon;
     if (decoder.outputDataBlock) {
         decoder.outputDataBlock(imageBuffer);
     }
+    
+    if (imageBuffer != NULL) {
+        CVPixelBufferRelease(imageBuffer);
+    }
+}
+
+- (void)dealloc {
+    self.decompressSession = NULL;
 }
 
 @end
