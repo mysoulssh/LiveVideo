@@ -26,7 +26,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Encode frame error block
 @property(nonatomic, copy)void (^ErrorBlock)(NSString * _Nullable error);
 
-- (instancetype)init;
+/// Init video encoder with data type
+/// @param encodeVideDataType Encode video data type
+- (instancetype)initWithEncodeVideoDataType:(VideoDataType)encodeVideDataType;
 
 /// Setting encode video quality
 - (void)setEncodeVideoQuality:(EncodeVideoQuality)quality;

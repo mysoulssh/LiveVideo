@@ -14,23 +14,36 @@
 @property (nonatomic) CFStringRef encodeLevel;
 
 @property (nonatomic) dispatch_queue_t encodeQueue;
+@property(nonatomic, assign)VideoDataType encodeVideoDataType;
 @end
 
 @implementation MSVideoEncoder
 
-- (instancetype)init
-{
-    self = [super init];
-    if (self) {
-        self.fps = 30;
-        self.bitRate = 1628*1024;
-        self.keyFrameInterval = 60;
-        self.limit = @[@(self.bitRate*1.5/8), @(1)];
-        self.videoQuality = EncodeVideoQualityHD;
-        self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
-        self.encodeQueue = dispatch_queue_create("encodeQueue", DISPATCH_QUEUE_SERIAL);
+- (instancetype)initWithEncodeVideoDataType:(VideoDataType)encodeVideDataType {
+    if (self = [super init]) {
+        self.encodeVideoDataType = encodeVideDataType;
+        [self baseConfigure];
     }
     return self;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.encodeVideoDataType = VideoDataTypeH264;
+        [self baseConfigure];
+    }
+    return self;
+}
+
+- (void)baseConfigure {
+    self.fps = 30;
+    self.bitRate = 1628*1024;
+    self.keyFrameInterval = 60;
+    self.limit = @[@(self.bitRate*1.5/8), @(1)];
+    self.videoQuality = EncodeVideoQualityHD;
+    self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
+    self.encodeQueue = dispatch_queue_create("encodeQueue", DISPATCH_QUEUE_SERIAL);
 }
 
 - (void)setEncodeVideoQuality:(EncodeVideoQuality)quality {
@@ -61,11 +74,7 @@
     
     self.limit = @[@(self.bitRate*1.5/8), @(1)];
     
-    if (self.compressSession) {
-        VTCompressionSessionCompleteFrames(self.compressSession, kCMTimeInvalid);
-        VTCompressionSessionInvalidate(self.compressSession);
-        self.compressSession = NULL;
-    }
+    [self releaseCompressionSession];
 }
 
 #pragma mark - 编码器相关
@@ -243,6 +252,8 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
             bufferOffset += AVCCHeaderLength + NALUnitLength;
         }
     }
+    
+    NSLog(@"encode block %@", [NSThread currentThread]);
 }
 
 // 获取 sps 以及 pps,并进行StartCode
@@ -285,16 +296,14 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
 
 #pragma mark - Dealloc video encoder
 - (void)releaseCompressionSession {
-    if (self.compressSession) {
-        VTCompressionSessionInvalidate(self.compressSession);
-        CFRelease(self.compressSession);
-        self.compressSession = NULL;
-    }
-}
-
-- (void)dealloc
-{
-    [self releaseCompressionSession];
+    NSLog(@"release block %@", [NSThread currentThread]);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.compressSession) {
+            VTCompressionSessionInvalidate(self.compressSession);
+            CFRelease(self.compressSession);
+            self.compressSession = NULL;
+        }
+    });
 }
 
 @end

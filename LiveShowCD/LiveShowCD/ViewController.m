@@ -67,6 +67,10 @@ typedef NS_ENUM(NSUInteger, CameraSetupResult) {
 - (IBAction)videoQualityChanged:(UISegmentedControl *)sender {
     [self.captureSession stopRunning];
     
+    [self.videoEncoder releaseCompressionSession];
+    self.videoEncoder = nil;
+    self.fileHandle = nil;
+    
     [self.captureSession beginConfiguration];
     if (sender.selectedSegmentIndex == 0) {         // High
         self.captureSession.sessionPreset = AVCaptureSessionPresetHigh;
@@ -77,11 +81,9 @@ typedef NS_ENUM(NSUInteger, CameraSetupResult) {
     }
     [self.captureSession commitConfiguration];
     
-    [self.videoEncoder releaseCompressionSession];
-    self.videoEncoder = nil;
-    self.fileHandle = nil;
-    
-    [self.captureSession startRunning];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.captureSession startRunning];
+    });
 }
 
 - (void)focusPointTap:(UIGestureRecognizer *)gesture {
@@ -313,11 +315,11 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     if ([output isKindOfClass:NSClassFromString(@"AVCaptureVideoDataOutput")]) {
         NSLog(@"%@", [NSThread currentThread]);
-//        __weak ViewController * selfWeak = self;
-//        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
-////            [selfWeak.fileHandle writeData:data];
-//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
-//        }];
+        __weak ViewController * selfWeak = self;
+        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
+//            [selfWeak.fileHandle writeData:data];
+            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+        }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");
     }

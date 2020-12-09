@@ -20,9 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// Video DecoderBlock
 @property(nonatomic, copy)VideoDecodeDataBlock outputDataBlock;
 
-@property(nonatomic, assign)VideoDataType videoDecodeDataType;
-
-- (instancetype)init;
+- (instancetype)initWithDecodeVideoDataType:(VideoDataType)decodeVideoDataType;
 
 /// Decode video data
 /// @param naluData Nalu data

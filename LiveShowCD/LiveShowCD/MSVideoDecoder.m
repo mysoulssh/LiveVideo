@@ -21,16 +21,24 @@
 }
 
 @property(nonatomic, assign)VTDecompressionSessionRef decompressSession;
+@property(nonatomic, assign)VideoDataType decodeVideoDataType;
 
 @end
 
 @implementation MSVideoDecoder
 
+- (instancetype)initWithDecodeVideoDataType:(VideoDataType)decodeVideoDataType {
+    if (self = [super init]) {
+        self.decodeVideoDataType = decodeVideoDataType;
+    }
+    return self;
+}
+
 - (instancetype)init
 {
     self = [super init];
     if (self) {
-        self.videoDecodeDataType = VideoDataTypeH264;
+        self.decodeVideoDataType = VideoDataTypeH264;
     }
     return self;
 }
