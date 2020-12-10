@@ -12,9 +12,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface MSVideoEncoder : NSObject
 
-/// Frame rate, default 25
+/// Frame rate, default 30
 @property(nonatomic, assign)int fps;
-/// Bit rate, default 512*1024
+/// Bit rate, default 2560*1024
 @property(nonatomic, assign)int bitRate;
 /// Key frame interval, default 60s
 @property(nonatomic, assign)int keyFrameInterval;

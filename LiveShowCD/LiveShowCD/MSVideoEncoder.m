@@ -7,6 +7,12 @@
 
 #import "MSVideoEncoder.h"
 
+#define BITRATE_BluRay 5120*1024
+#define BITRATE_HD     2560*1024
+#define BITRATE_SD     1920*1024
+#define BITRATE_PC_360 1280*1024
+
+
 @interface MSVideoEncoder()
 @property(nonatomic, assign)VTCompressionSessionRef compressSession;
 @property(nonatomic, copy)VideoEncodeDataBlock outputBlock;
@@ -21,7 +27,11 @@
 
 - (instancetype)initWithEncodeVideoDataType:(VideoDataType)encodeVideDataType {
     if (self = [super init]) {
-        self.encodeVideoDataType = encodeVideDataType;
+        if (@available(iOS 11.0, *)) {
+            self.encodeVideoDataType = encodeVideDataType;
+        } else {
+            self.encodeVideoDataType = VideoDataTypeH264;
+        }
         [self baseConfigure];
     }
     return self;
@@ -38,12 +48,18 @@
 
 - (void)baseConfigure {
     self.fps = 30;
-    self.bitRate = 1628*1024;
+    self.bitRate = BITRATE_HD;
     self.keyFrameInterval = 60;
     self.limit = @[@(self.bitRate*1.5/8), @(1)];
     self.videoQuality = EncodeVideoQualityHD;
-    self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
     self.encodeQueue = dispatch_queue_create("encodeQueue", DISPATCH_QUEUE_SERIAL);
+    if (self.encodeVideoDataType == VideoDataTypeHEVC) {
+        if (@available(iOS 11.0, *)) {
+            self.encodeLevel = kVTProfileLevel_HEVC_Main_AutoLevel;
+        }
+    } else {
+        self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
+    }
 }
 
 - (void)setEncodeVideoQuality:(EncodeVideoQuality)quality {
@@ -52,24 +68,32 @@
     }
     switch (quality) {
         case EncodeVideoQualityBluRay:
-            self.bitRate = 3192*1024;
-            self.encodeLevel = kVTProfileLevel_H264_Baseline_4_2;
+            self.bitRate = BITRATE_BluRay;
+            self.encodeLevel = kVTProfileLevel_H264_Baseline_5_0;
             break;
         case EncodeVideoQualityHD:
-            self.bitRate = 1628*1024;
+            self.bitRate = BITRATE_HD;
             self.encodeLevel = kVTProfileLevel_H264_Baseline_4_0;
             break;
         case EncodeVideoQualitySD:
-            self.bitRate = 564*1024;
+            self.bitRate = BITRATE_SD;
             self.encodeLevel = kVTProfileLevel_H264_Baseline_3_1;
             break;
         case EncodeVideoQualityPC_360:
-            self.bitRate = 332*1024;
+            self.bitRate = BITRATE_PC_360;
             self.encodeLevel = kVTProfileLevel_H264_Baseline_1_3;
             break;
             
         default:
             break;
+    }
+    
+    if (self.encodeVideoDataType == VideoDataTypeHEVC) {
+        if (@available(iOS 11.0, *)) {
+            self.encodeLevel = kVTProfileLevel_HEVC_Main_AutoLevel;
+        } else {
+            // Fallback on earlier versions
+        }
     }
     
     self.limit = @[@(self.bitRate*1.5/8), @(1)];
@@ -105,7 +129,7 @@
                                                           );
     
     if (statusCode != noErr) {
-        NSString * err = [NSString stringWithFormat:@"H264: VTCompressionSessionEncodeFrame failed with %d", (int)statusCode];
+        NSString * err = [NSString stringWithFormat:@"VTCompressionSessionEncodeFrame failed with %d", (int)statusCode];
         NSLog(@"%@", err);
         VTCompressionSessionInvalidate(self.compressSession);
         CFRelease(self.compressSession);
@@ -127,10 +151,11 @@
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
     VTCompressionSessionRef compressSession;
     
+    CMVideoCodecType codecType = self.encodeVideoDataType==VideoDataTypeHEVC?kCMVideoCodecType_HEVC:kCMVideoCodecType_H264;
     OSStatus status = VTCompressionSessionCreate(NULL,
                                                  (int32_t)width,
                                                  (int32_t)height,
-                                                 kCMVideoCodecType_H264,
+                                                 codecType,
                                                  NULL,
                                                  NULL,
                                                  NULL,
@@ -174,7 +199,11 @@
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_DataRateLimits, (__bridge CFArrayRef)limit);
     
     // 基本设置结束, 准备进行编码
-    VTCompressionSessionPrepareToEncodeFrames(compressSession);
+    status = VTCompressionSessionPrepareToEncodeFrames(compressSession);
+    if (status != noErr) {
+        NSLog(@"VTCompressionSessionPrepareToEncodeFrames error: %d", (int)status);
+        return nil;
+    }
     
     self.compressSession = compressSession;
     return self.compressSession;
@@ -202,28 +231,64 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
     bool isKeyframe = !CFDictionaryContainsKey( (CFArrayGetValueAtIndex(CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, true), 0)), kCMSampleAttachmentKey_NotSync);
     
     // 判断当前帧是否为关键帧
-    // 获取sps & pps数据
-    if (isKeyframe)
-    {
-        // 获取编码后的信息（存储于CMFormatDescriptionRef中）
-        CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(sampleBuffer);
-        
-        // 获取SPS信息
-        size_t sparameterSetSize, sparameterSetCount;
-        const uint8_t *sparameterSet;
-        CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 0, &sparameterSet, &sparameterSetSize, &sparameterSetCount, 0 );
-        
-        // 获取PPS信息
-        size_t pparameterSetSize, pparameterSetCount;
-        const uint8_t *pparameterSet;
-        CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 1, &pparameterSet, &pparameterSetSize, &pparameterSetCount, 0 );
-        
-        // 将sps/pps转成NSData
-        NSData *sps = [NSData dataWithBytes:sparameterSet length:sparameterSetSize];
-        NSData *pps = [NSData dataWithBytes:pparameterSet length:pparameterSetSize];
-        
-        // 写入文件
-        [encoder gotSpsPps:sps pps:pps];
+    if (encoder.encodeVideoDataType == VideoDataTypeHEVC) {
+        // 获取vps sps & pps数据
+        if (isKeyframe)
+        {
+            if (@available(iOS 11.0, *)) {
+                // 获取编码后的信息（存储于CMFormatDescriptionRef中）
+                CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(sampleBuffer);
+                
+                int naluHeaderLength = 0;
+                // 获取VPS信息
+                size_t vparameterSetSize, vparameterSetCount;
+                const uint8_t *vparameterSet;
+                CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(format, 0, &vparameterSet, &vparameterSetSize, &vparameterSetCount, &naluHeaderLength);
+                
+                
+                // 获取SPS信息
+                size_t sparameterSetSize, sparameterSetCount;
+                const uint8_t *sparameterSet;
+                CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(format, 1, &sparameterSet, &sparameterSetSize, &sparameterSetCount, &naluHeaderLength);
+                
+                // 获取PPS信息
+                size_t pparameterSetSize, pparameterSetCount;
+                const uint8_t *pparameterSet;
+                CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(format, 2, &pparameterSet, &pparameterSetSize, &pparameterSetCount, &naluHeaderLength);
+                
+                // 将vps,sps/pps转成NSData
+                NSData *vps = [NSData dataWithBytes:vparameterSet length:vparameterSetSize];
+                NSData *sps = [NSData dataWithBytes:sparameterSet length:sparameterSetSize];
+                NSData *pps = [NSData dataWithBytes:pparameterSet length:pparameterSetSize];
+                
+                // 写入文件
+                [encoder gotVpsSpsPps:vps sps:sps pps:pps];
+            }
+        }
+    } else {
+        // 获取sps & pps数据
+        if (isKeyframe)
+        {
+            // 获取编码后的信息（存储于CMFormatDescriptionRef中）
+            CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(sampleBuffer);
+            
+            // 获取SPS信息
+            size_t sparameterSetSize, sparameterSetCount;
+            const uint8_t *sparameterSet;
+            CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 0, &sparameterSet, &sparameterSetSize, &sparameterSetCount, 0 );
+            
+            // 获取PPS信息
+            size_t pparameterSetSize, pparameterSetCount;
+            const uint8_t *pparameterSet;
+            CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 1, &pparameterSet, &pparameterSetSize, &pparameterSetCount, 0 );
+            
+            // 将sps/pps转成NSData
+            NSData *sps = [NSData dataWithBytes:sparameterSet length:sparameterSetSize];
+            NSData *pps = [NSData dataWithBytes:pparameterSet length:pparameterSetSize];
+            
+            // 写入文件
+            [encoder gotSpsPps:sps pps:pps];
+        }
     }
     
     // 获取数据块
@@ -264,19 +329,51 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
     size_t length = (sizeof bytes) - 1;
     NSData *ByteHeader = [NSData dataWithBytes:bytes length:length];
 
-    NSMutableData *h264Data = [[NSMutableData alloc] init];
-    [h264Data appendData:ByteHeader];
-    [h264Data appendData:sps];
+    NSMutableData *videoEncodeData = [[NSMutableData alloc] init];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:sps];
     if (self.outputBlock) {
-        self.outputBlock(h264Data);
+        self.outputBlock(videoEncodeData);
     }
     
-    [h264Data resetBytesInRange:NSMakeRange(0, [h264Data length])];
-    [h264Data setLength:0];
-    [h264Data appendData:ByteHeader];
-    [h264Data appendData:pps];
+    [videoEncodeData resetBytesInRange:NSMakeRange(0, [videoEncodeData length])];
+    [videoEncodeData setLength:0];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:pps];
     if (self.outputBlock) {
-        self.outputBlock(h264Data);
+        self.outputBlock(videoEncodeData);
+    }
+}
+
+// 获取 vps, sps 以及 pps,并进行StartCode
+- (void)gotVpsSpsPps:(NSData *)vps sps:(NSData*)sps pps:(NSData*)pps{
+    
+    // 拼接NALU的 StartCode,默认规定使用 00000001
+    const char bytes[] = "\x00\x00\x00\x01";
+    size_t length = (sizeof bytes) - 1;
+    NSData *ByteHeader = [NSData dataWithBytes:bytes length:length];
+    
+    NSMutableData *videoEncodeData = [[NSMutableData alloc] init];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:vps];
+    if (self.outputBlock) {
+        self.outputBlock(videoEncodeData);
+    }
+
+    [videoEncodeData resetBytesInRange:NSMakeRange(0, [videoEncodeData length])];
+    [videoEncodeData setLength:0];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:sps];
+    if (self.outputBlock) {
+        self.outputBlock(videoEncodeData);
+    }
+    
+    [videoEncodeData resetBytesInRange:NSMakeRange(0, [videoEncodeData length])];
+    [videoEncodeData setLength:0];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:pps];
+    if (self.outputBlock) {
+        self.outputBlock(videoEncodeData);
     }
 }
 
@@ -286,11 +383,11 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
     size_t length = (sizeof bytes) - 1;     //string literals have implicit trailing '\0'
     NSData *ByteHeader = [NSData dataWithBytes:bytes length:length];
     
-    NSMutableData *h264Data = [[NSMutableData alloc] init];
-    [h264Data appendData:ByteHeader];
-    [h264Data appendData:data];
+    NSMutableData *videoEncodeData = [[NSMutableData alloc] init];
+    [videoEncodeData appendData:ByteHeader];
+    [videoEncodeData appendData:data];
     if (self.outputBlock) {
-        self.outputBlock(h264Data);
+        self.outputBlock(videoEncodeData);
     }
 }
 

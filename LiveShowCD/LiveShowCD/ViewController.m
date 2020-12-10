@@ -127,9 +127,11 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (MSVideoEncoder *)videoEncoder {
     if (!_videoEncoder) {
         __weak ViewController * selfWeak = self;
-        _videoEncoder = [[MSVideoEncoder alloc] init];
+        _videoEncoder = [[MSVideoEncoder alloc] initWithEncodeVideoDataType:VideoDataTypeH264];
         _videoEncoder.ErrorBlock = ^(NSString * _Nullable error) {
-            [selfWeak.captureSession stopRunning];
+            if (selfWeak.captureSession.isRunning) {
+                [selfWeak.captureSession stopRunning];
+            }
         };
     }
     return _videoEncoder;
@@ -148,7 +150,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 
 - (NSFileHandle *)fileHandle{
     if (!_fileHandle) {
-        NSString * filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"test.h264"];
+        NSString * filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"test.hevc"];
         if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         }
