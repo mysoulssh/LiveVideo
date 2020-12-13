@@ -187,7 +187,7 @@
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_ExpectedFrameRate, fpsRef);
     
     // 设置码率(码率: 编码效率, 码率越高,则画面越清晰, 如果码率较低会引起马赛克 --> 码率高有利于还原原始画面,但是也不利于传输)
-    int32_t bitRate = self.bitRate?:1628*1024;
+    int32_t bitRate = self.bitRate?:BITRATE_HD;
     CFNumberRef bitRateRef = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &bitRate);
     VTSessionSetProperty(compressSession, kVTCompressionPropertyKey_AverageBitRate, bitRateRef);
     
@@ -244,7 +244,6 @@ void videoCompressDataCallback(void *outputCallbackRefCon,
                 size_t vparameterSetSize, vparameterSetCount;
                 const uint8_t *vparameterSet;
                 CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(format, 0, &vparameterSet, &vparameterSetSize, &vparameterSetCount, &naluHeaderLength);
-                
                 
                 // 获取SPS信息
                 size_t sparameterSetSize, sparameterSetCount;

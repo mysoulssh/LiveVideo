@@ -127,7 +127,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (MSVideoEncoder *)videoEncoder {
     if (!_videoEncoder) {
         __weak ViewController * selfWeak = self;
-        _videoEncoder = [[MSVideoEncoder alloc] initWithEncodeVideoDataType:VideoDataTypeH264];
+        _videoEncoder = [[MSVideoEncoder alloc] initWithEncodeVideoDataType:VideoDataTypeHEVC];
         _videoEncoder.ErrorBlock = ^(NSString * _Nullable error) {
             if (selfWeak.captureSession.isRunning) {
                 [selfWeak.captureSession stopRunning];
@@ -140,7 +140,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (MSVideoDecoder *)videoDecoder {
     if (!_videoDecoder) {
         __weak ViewController * selfWeak = self;
-        _videoDecoder = [[MSVideoDecoder alloc] init];
+        _videoDecoder = [[MSVideoDecoder alloc] initWithDecodeVideoDataType:VideoDataTypeHEVC];
         _videoDecoder.outputDataBlock = ^(CVPixelBufferRef pixelBuffer) {
             selfWeak.playLayer.pixelBuffer = pixelBuffer;
         };
@@ -319,8 +319,8 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
         NSLog(@"%@", [NSThread currentThread]);
         __weak ViewController * selfWeak = self;
         [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
-//            [selfWeak.fileHandle writeData:data];
-            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+            [selfWeak.fileHandle writeData:data];
+//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
         }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");

@@ -29,7 +29,11 @@
 
 - (instancetype)initWithDecodeVideoDataType:(VideoDataType)decodeVideoDataType {
     if (self = [super init]) {
-        self.decodeVideoDataType = decodeVideoDataType;
+        if (@available(iOS 11.0, *)) {
+            self.decodeVideoDataType = decodeVideoDataType;
+        } else {
+            self.decodeVideoDataType = VideoDataTypeH264;
+        }
     }
     return self;
 }
@@ -138,11 +142,22 @@
         return self.decompressSession;
     }
     
-    CMVideoFormatDescriptionRef videoFormatDesRef;
-    const uint8_t* const parameterSetPointers[2] = {_sps, _pps};
-    const size_t parameterSetSizes[2] = {_spsSize, _ppsSize};
+    CMVideoFormatDescriptionRef videoFormatDesRef = NULL;
+    OSStatus status = 0;
+    if (self.decodeVideoDataType == VideoDataTypeHEVC) {
+        const uint8_t* const parameterSetPointers[3] = {_vps, _sps, _pps};
+        const size_t parameterSetSizes[3] = {_vpsSize, _spsSize, _ppsSize};
+        
+        if (@available(iOS 11.0, *)) {
+            status = CMVideoFormatDescriptionCreateFromHEVCParameterSets(kCFAllocatorDefault, 3, parameterSetPointers, parameterSetSizes, 4, NULL, &videoFormatDesRef);
+        }
+    } else {
+        const uint8_t* const parameterSetPointers[2] = {_sps, _pps};
+        const size_t parameterSetSizes[2] = {_spsSize, _ppsSize};
+        
+        status = CMVideoFormatDescriptionCreateFromH264ParameterSets(kCFAllocatorDefault, 2, parameterSetPointers, parameterSetSizes, 4, &videoFormatDesRef);
+    }
     
-    OSStatus status = CMVideoFormatDescriptionCreateFromH264ParameterSets(kCFAllocatorDefault, 2, parameterSetPointers, parameterSetSizes, 4, &videoFormatDesRef);
     
     if (status != noErr) {
         NSLog(@"create decoder format error:%d", (int)status);
