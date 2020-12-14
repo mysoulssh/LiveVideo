@@ -98,6 +98,57 @@
 - (void)decodeVideoDataWithNaluData:(NSData *)naluData {
     uint8_t *frame = (uint8_t *)naluData.bytes;
     uint32_t frameSize = (uint32_t)naluData.length;
+    
+    if (self.decodeVideoDataType == VideoDataTypeHEVC) {
+        // frame的前4个字节是NALU数据的开始码，也就是00 00 00 01，
+        // 第5个字节是表示数据类型，转为10进制后，7是sps, 8是pps, 5是IDR（I帧）信息
+        int nalu_type = (frame[4] & 0x7E)>>1;
+        
+        // 将NALU的开始码转为4字节大端NALU的长度信息
+        uint32_t nalSize = (uint32_t)(frameSize - 4);
+        uint8_t *pNalSize = (uint8_t*)(&nalSize);
+        frame[0] = *(pNalSize + 3);
+        frame[1] = *(pNalSize + 2);
+        frame[2] = *(pNalSize + 1);
+        frame[3] = *(pNalSize);
+        switch (nalu_type)
+        {
+            case 16: case 17: case 18: case 19:case 20:case 21: // I帧
+                NSLog(@"NALU type is IDR frame");
+                if([self initVideoDecoder])
+                {
+                    [self decodeFrame:frame frameSize:frameSize];
+                }
+                break;
+            case 32: // VPS
+                NSLog(@"NALU type is VPS frame");
+                _vpsSize = frameSize - 4;
+                _vps = malloc(_vpsSize);
+                memcpy(_vps, &frame[4], _vpsSize);
+                break;
+            case 33: // SPS
+                NSLog(@"NALU type is SPS frame");
+                _spsSize = frameSize - 4;
+                _sps = malloc(_spsSize);
+                memcpy(_sps, &frame[4], _spsSize);
+                break;
+            case 34: // PPS
+                NSLog(@"NALU type is PPS frame");
+                _ppsSize = frameSize - 4;
+                _pps = malloc(_ppsSize);
+                memcpy(_pps, &frame[4], _ppsSize);
+                break;
+            case 39: // SEI
+                NSLog(@"SEI 增强信息");
+                break;
+            default: // B帧或P帧
+                NSLog(@"NALU type is B/P frame");
+                [self decodeFrame:frame frameSize:frameSize];
+                break;
+        }
+        return;
+    }
+    
     // frame的前4个字节是NALU数据的开始码，也就是00 00 00 01，
     // 第5个字节是表示数据类型，转为10进制后，7是sps, 8是pps, 5是IDR（I帧）信息
     int nalu_type = (frame[4] & 0x1F);
@@ -143,6 +194,7 @@
     }
     
     CMVideoFormatDescriptionRef videoFormatDesRef = NULL;
+    
     OSStatus status = 0;
     if (self.decodeVideoDataType == VideoDataTypeHEVC) {
         const uint8_t* const parameterSetPointers[3] = {_vps, _sps, _pps};
@@ -158,11 +210,11 @@
         status = CMVideoFormatDescriptionCreateFromH264ParameterSets(kCFAllocatorDefault, 2, parameterSetPointers, parameterSetSizes, 4, &videoFormatDesRef);
     }
     
-    
     if (status != noErr) {
         NSLog(@"create decoder format error:%d", (int)status);
         return NULL;
     }
+    
     _videoFormatDescription = videoFormatDesRef;
     
     // 从sps pps中获取解码视频的宽高信息

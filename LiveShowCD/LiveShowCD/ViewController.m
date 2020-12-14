@@ -319,8 +319,8 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
         NSLog(@"%@", [NSThread currentThread]);
         __weak ViewController * selfWeak = self;
         [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
-            [selfWeak.fileHandle writeData:data];
-//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+//            [selfWeak.fileHandle writeData:data];
+            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
         }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");
