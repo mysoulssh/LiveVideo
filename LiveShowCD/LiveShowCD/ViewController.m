@@ -127,7 +127,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (MSVideoEncoder *)videoEncoder {
     if (!_videoEncoder) {
         __weak ViewController * selfWeak = self;
-        _videoEncoder = [[MSVideoEncoder alloc] initWithEncodeVideoDataType:VideoDataTypeHEVC];
+        _videoEncoder = [[MSVideoEncoder alloc] initWithEncodeVideoDataType:VideoDataTypeH264];
         _videoEncoder.ErrorBlock = ^(NSString * _Nullable error) {
             if (selfWeak.captureSession.isRunning) {
                 [selfWeak.captureSession stopRunning];
@@ -140,7 +140,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 - (MSVideoDecoder *)videoDecoder {
     if (!_videoDecoder) {
         __weak ViewController * selfWeak = self;
-        _videoDecoder = [[MSVideoDecoder alloc] initWithDecodeVideoDataType:VideoDataTypeHEVC];
+        _videoDecoder = [[MSVideoDecoder alloc] initWithDecodeVideoDataType:VideoDataTypeH264];
         _videoDecoder.outputDataBlock = ^(CVPixelBufferRef pixelBuffer) {
             selfWeak.playLayer.pixelBuffer = pixelBuffer;
         };
@@ -301,12 +301,12 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
     [connection setVideoOrientation:AVCaptureVideoOrientationPortrait];
     
     // 创建音频输出设备
-//    AVCaptureAudioDataOutput * audioOutput = [[AVCaptureAudioDataOutput alloc] init];
-//    [audioOutput setSampleBufferDelegate:self queue:self.outputQueue];
-//    if ([self.captureSession canAddOutput:audioOutput]) {
-//        [self.captureSession addOutput:audioOutput];
-//    }
-//    self.audioDataOutput = audioOutput;
+    AVCaptureAudioDataOutput * audioOutput = [[AVCaptureAudioDataOutput alloc] init];
+    [audioOutput setSampleBufferDelegate:self queue:self.outputQueue];
+    if ([self.captureSession canAddOutput:audioOutput]) {
+        [self.captureSession addOutput:audioOutput];
+    }
+    self.audioDataOutput = audioOutput;
     
     [self.captureSession commitConfiguration];
     
@@ -316,12 +316,12 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     if ([output isKindOfClass:NSClassFromString(@"AVCaptureVideoDataOutput")]) {
-        NSLog(@"%@", [NSThread currentThread]);
-        __weak ViewController * selfWeak = self;
-        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
+//        NSLog(@"%@", [NSThread currentThread]);
+//        __weak ViewController * selfWeak = self;
+//        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
 //            [selfWeak.fileHandle writeData:data];
-            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
-        }];
+//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+//        }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");
     }

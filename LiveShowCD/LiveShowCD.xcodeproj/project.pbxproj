@@ -11,6 +11,8 @@
 		176F8836258766E000CA11FB /* MSCamPreviewView.m in Sources */ = {isa = PBXBuildFile; fileRef = 176F882E258766E000CA11FB /* MSCamPreviewView.m */; };
 		176F8837258766E000CA11FB /* MSVideoDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 176F8831258766E000CA11FB /* MSVideoDecoder.m */; };
 		176F8838258766E000CA11FB /* MSVideoEncoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 176F8832258766E000CA11FB /* MSVideoEncoder.m */; };
+		17A58E5225889FC600CDE49A /* MSAudioEncoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A58E5125889FC600CDE49A /* MSAudioEncoder.m */; };
+		17A58E5825889FD300CDE49A /* MSAudioDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = 17A58E5725889FD300CDE49A /* MSAudioDecoder.m */; };
 		17C0F5052552B1B40057976A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F5042552B1B40057976A /* AppDelegate.m */; };
 		17C0F5082552B1B40057976A /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F5072552B1B40057976A /* SceneDelegate.m */; };
 		17C0F50B2552B1B40057976A /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F50A2552B1B40057976A /* ViewController.m */; };
@@ -55,6 +57,10 @@
 		176F8832258766E000CA11FB /* MSVideoEncoder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MSVideoEncoder.m; sourceTree = "<group>"; };
 		176F8833258766E000CA11FB /* MSVideoDecoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MSVideoDecoder.h; sourceTree = "<group>"; };
 		176F8835258766E000CA11FB /* MSDefineHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MSDefineHeader.h; sourceTree = "<group>"; };
+		17A58E5025889FC600CDE49A /* MSAudioEncoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSAudioEncoder.h; sourceTree = "<group>"; };
+		17A58E5125889FC600CDE49A /* MSAudioEncoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSAudioEncoder.m; sourceTree = "<group>"; };
+		17A58E5625889FD300CDE49A /* MSAudioDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MSAudioDecoder.h; sourceTree = "<group>"; };
+		17A58E5725889FD300CDE49A /* MSAudioDecoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MSAudioDecoder.m; sourceTree = "<group>"; };
 		17C0F5002552B1B40057976A /* LiveShowCD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveShowCD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		17C0F5032552B1B40057976A /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		17C0F5042552B1B40057976A /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -134,6 +140,10 @@
 		176F882B258766E000CA11FB /* MSAudioCodec */ = {
 			isa = PBXGroup;
 			children = (
+				17A58E5025889FC600CDE49A /* MSAudioEncoder.h */,
+				17A58E5125889FC600CDE49A /* MSAudioEncoder.m */,
+				17A58E5625889FD300CDE49A /* MSAudioDecoder.h */,
+				17A58E5725889FD300CDE49A /* MSAudioDecoder.m */,
 			);
 			path = MSAudioCodec;
 			sourceTree = "<group>";
@@ -459,11 +469,13 @@
 				17C0F50B2552B1B40057976A /* ViewController.m in Sources */,
 				17C0F5052552B1B40057976A /* AppDelegate.m in Sources */,
 				176F8838258766E000CA11FB /* MSVideoEncoder.m in Sources */,
+				17A58E5825889FD300CDE49A /* MSAudioDecoder.m in Sources */,
 				176F8837258766E000CA11FB /* MSVideoDecoder.m in Sources */,
 				17C0F5162552B1B70057976A /* main.m in Sources */,
 				17C0F5082552B1B40057976A /* SceneDelegate.m in Sources */,
 				1766E1B5257F8A1900EEC9DA /* AAPLEAGLLayer.m in Sources */,
 				176F8836258766E000CA11FB /* MSCamPreviewView.m in Sources */,
+				17A58E5225889FC600CDE49A /* MSAudioEncoder.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

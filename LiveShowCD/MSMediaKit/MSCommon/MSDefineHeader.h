@@ -9,7 +9,10 @@
 #define MSDefineHeader_h
 
 #import <VideoToolbox/VideoToolbox.h>
+#import <AudioToolbox/AudioToolbox.h>
 
+
+#pragma mark - Video Types
 typedef void (^VideoEncodeDataBlock)(NSData * data);
 typedef void (^VideoDecodeDataBlock)(CVPixelBufferRef pixelBuffer);
 
@@ -35,8 +38,14 @@ typedef NS_ENUM(NSUInteger, VideoDataType) {
     VideoDataTypeFLV            // FLV
 };
 
+#pragma mark - Audio Types
+typedef void AudioEncodeDataBlock(NSData * encodeData);
+typedef void AudioDecodeDataBlock(NSData * decodeData);
+
 typedef NS_ENUM(NSUInteger, AudioDataType) {
+    // Origin data type
     AudioDataTypePCM,           // PCM
+    // Encode data type
     AudioDataTypeAAC,           // AAC
     AudioDataTypeOpus,          // OPUS
     AudioDataTypeU_Law,         // G711u
