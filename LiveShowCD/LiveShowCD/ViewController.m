@@ -11,6 +11,8 @@
 #import "MSVideoDecoder.h"
 #import "AAPLEAGLLayer.h"
 
+#import "MSAudioEncoder.h"
+
 typedef NS_ENUM(NSUInteger, CameraSetupResult) {
     CameraSetupResultSuccess,
     CameraSetupResultNoAuthorized,
@@ -41,6 +43,8 @@ typedef NS_ENUM(NSUInteger, CameraSetupResult) {
 
 @property(nonatomic, strong)NSFileHandle * fileHandle;
 @property(nonatomic, strong)AAPLEAGLLayer * playLayer;
+
+@property(nonatomic, strong)MSAudioEncoder * audioEncoder;
 @end
 
 @implementation ViewController
@@ -150,7 +154,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 
 - (NSFileHandle *)fileHandle{
     if (!_fileHandle) {
-        NSString * filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"test.hevc"];
+        NSString * filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"test.aac"];
         if ([[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
             [[NSFileManager defaultManager] removeItemAtPath:filePath error:nil];
         }
@@ -158,6 +162,14 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
         _fileHandle = [NSFileHandle fileHandleForWritingAtPath:filePath];
     }
     return _fileHandle;
+}
+
+- (MSAudioEncoder *)audioEncoder {
+    if (!_audioEncoder) {
+//        _audioEncoder = [[MSAudioEncoder alloc] initWithAudioDataType:AudioDataTypeAAC];
+        _audioEncoder = [[MSAudioEncoder alloc] init];
+    }
+    return _audioEncoder;
 }
 
 - (void)viewDidLoad {
@@ -291,7 +303,7 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
     // 创建视频输出设备
     AVCaptureVideoDataOutput * videoOutput = [[AVCaptureVideoDataOutput alloc] init];
     [videoOutput setVideoSettings:@{(__bridge id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange)}];
-    [videoOutput setSampleBufferDelegate:self queue:self.outputQueue];
+//    [videoOutput setSampleBufferDelegate:self queue:self.outputQueue];
     if ([self.captureSession canAddOutput:videoOutput]) {
         [self.captureSession addOutput:videoOutput];
     }
@@ -315,15 +327,19 @@ monitorSubjectAreaChange:(BOOL)monitorSubjectAreaChange
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    __weak ViewController * selfWeak = self;
     if ([output isKindOfClass:NSClassFromString(@"AVCaptureVideoDataOutput")]) {
 //        NSLog(@"%@", [NSThread currentThread]);
-//        __weak ViewController * selfWeak = self;
-//        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
-//            [selfWeak.fileHandle writeData:data];
-//            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
-//        }];
+        [self.videoEncoder encodeSampleBuffer:sampleBuffer outputData:^(NSData * _Nonnull data) {
+            [selfWeak.fileHandle writeData:data];
+            [selfWeak.videoDecoder decodeVideoDataWithNaluData:data];
+        }];
     } else if ([output isKindOfClass:NSClassFromString(@"AVCaptureAudioDataOutput")]) {
         NSLog(@"AVCaptureAudioDataOutput +++");
+        
+        [self.audioEncoder encodeAudioDataWithSampleBuffer:sampleBuffer encodeDataBlock:^(NSData *encodeData) {
+            [selfWeak.fileHandle writeData:encodeData];
+        }];
     }
 }
 

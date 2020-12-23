@@ -39,8 +39,8 @@ typedef NS_ENUM(NSUInteger, VideoDataType) {
 };
 
 #pragma mark - Audio Types
-typedef void AudioEncodeDataBlock(NSData * encodeData);
-typedef void AudioDecodeDataBlock(NSData * decodeData);
+typedef void (^AudioEncodeDataBlock)(NSData * encodeData);
+typedef void (^AudioDecodeDataBlock)(NSData * decodeData);
 
 typedef NS_ENUM(NSUInteger, AudioDataType) {
     // Origin data type

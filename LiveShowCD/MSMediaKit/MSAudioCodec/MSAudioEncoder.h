@@ -16,6 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithAudioDataType:(AudioDataType)audioDataType;
 
+- (void)encodeAudioDataWithSampleBuffer:(CMSampleBufferRef)sampleBuffer encodeDataBlock:(AudioEncodeDataBlock)encodeBlock;
+
 @end
 
 NS_ASSUME_NONNULL_END

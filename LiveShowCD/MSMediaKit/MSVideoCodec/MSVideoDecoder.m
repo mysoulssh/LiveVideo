@@ -163,26 +163,26 @@
     switch (nalu_type)
     {
         case 0x05: // I帧
-            NSLog(@"NALU type is IDR frame");
+//            NSLog(@"NALU type is IDR frame");
             if([self initVideoDecoder])
             {
                 [self decodeFrame:frame frameSize:frameSize];
             }
             break;
         case 0x07: // SPS
-            NSLog(@"NALU type is SPS frame");
+//            NSLog(@"NALU type is SPS frame");
             _spsSize = frameSize - 4;
             _sps = malloc(_spsSize);
             memcpy(_sps, &frame[4], _spsSize);
             break;
         case 0x08: // PPS
-            NSLog(@"NALU type is PPS frame");
+//            NSLog(@"NALU type is PPS frame");
             _ppsSize = frameSize - 4;
             _pps = malloc(_ppsSize);
             memcpy(_pps, &frame[4], _ppsSize);
             break;
         default: // B帧或P帧
-            NSLog(@"NALU type is B/P frame");
+//            NSLog(@"NALU type is B/P frame");
             [self decodeFrame:frame frameSize:frameSize];
             break;
     }
@@ -280,6 +280,62 @@ void videoDecompressDataCallback(void * CM_NULLABLE decompressionOutputRefCon,
     if (imageBuffer != NULL) {
         CVPixelBufferRelease(imageBuffer);
     }
+}
+
++ (NSMutableArray<NSData *> *)getSPSAndPPSWithData:(char *)addr size:(uint32_t)size {
+    char sps[512]={0};
+    char pps[512]={0};
+    char *psps_start = NULL, *ppps_start = NULL, *pidr_start = NULL;
+    bool sps_start = false, pps_start = false, idr_start = false;
+    uint32_t lsps_start = 0, lpps_start = 0, lidr_start = 0;
+    
+    int i = 0;
+    
+    char * buf = addr;
+    for (i = 0; i < size; i++) {
+        if (buf + 4 >= addr + size){
+            break;
+        }
+        
+        if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0 && buf[3] == 0x01) {
+//            RFLog(@"type=[%02x]\n", buf[4]);
+            
+            if (sps_start) {
+                sps_start = false;
+                lsps_start = buf - psps_start;
+                memcpy(sps, psps_start, lsps_start);
+//                RFLog(@"sps end\n");
+            }
+            
+            if (pps_start) {
+                pps_start = false;
+                lpps_start = buf - ppps_start;
+                memcpy(pps, ppps_start, lpps_start);
+//                RFLog(@"pps end\n");
+            }
+            
+            if ((buf[4] & 0x1F) == 0x07) {
+//                RFLog(@"find sps\n");
+                sps_start = true;
+                psps_start = buf;
+            } else if ((buf[4] & 0x1F) == 0x08) {
+//                RFLog(@"find pps\n");
+                pps_start = true;
+                ppps_start = buf;
+            } else if ((buf[4] & 0x1F) == 0x05) {
+//                RFLog(@"find idr\n");
+                idr_start = true;
+                pidr_start = buf;
+            }
+        }
+        buf++;
+    }
+    
+    NSData * spsData = [NSData dataWithBytes:sps length:lsps_start];
+    NSData * ppsData = [NSData dataWithBytes:pps length:lpps_start];
+    NSData * idrData = [NSData dataWithBytes:pidr_start length:(size-lsps_start-lpps_start)];
+    
+    return [NSMutableArray arrayWithObjects:spsData, ppsData, idrData, nil];
 }
 
 - (void)dealloc {

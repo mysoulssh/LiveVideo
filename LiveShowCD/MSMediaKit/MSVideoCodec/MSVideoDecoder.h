@@ -26,6 +26,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// @param naluData Nalu data
 - (void)decodeVideoDataWithNaluData:(NSData *)naluData;
 
+/// Get sps and pps data from idr frame
+/// @param addr idr frame
+/// @param size idr frame size
++ (NSMutableArray<NSData *> *)getSPSAndPPSWithData:(char *)addr size:(uint32_t)size;
+
 @end
 
 NS_ASSUME_NONNULL_END
